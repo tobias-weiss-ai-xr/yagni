@@ -190,7 +190,8 @@ def render_lists_page():
     if not email:
         return page("Your lists", '<h1>YAGNI</h1><p class="muted">No active login. Log in from the start page first.</p>')
     rows = "".join(f'<p><a href="/l/{t}">/l/{t}</a></p>' for t, l in STORE.items() if l.get("email") == email)
-    return page("Your lists", f"<h1>Lists for {esc(email)}</h1>{rows or '<p class=\"muted\">No lists linked yet.</p>'}")
+    empty = '<p class="muted">No lists linked yet.</p>'  # py3.8: no backslash in f-string expr
+    return page("Your lists", f"<h1>Lists for {esc(email)}</h1>{rows or empty}")
 
 
 # --- HTTP -------------------------------------------------------------------

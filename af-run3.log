@@ -1,0 +1,13 @@
+agentflow run: 3 tasks, 1 enabled worker(s), max_parallel=1
+  → AUTH dispatch on glm (glm-4.6) [attempt 1]
+  ✓ AUTH done (attempt 1)
+  → NOTIFY dispatch on glm (glm-4.6) [attempt 1]
+  ✓ NOTIFY done (attempt 1)
+  → SMOKE2 dispatch on glm (glm-4.6) [attempt 1]
+  ✓ SMOKE2 done (attempt 1)
+
+All tasks done.
+TASK         STATE     ATTEMPTS LAST ERROR
+AUTH         Done 1        
+NOTIFY       Done 1        
+SMOKE2       Done 1        
