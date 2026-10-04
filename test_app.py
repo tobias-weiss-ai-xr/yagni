@@ -30,7 +30,14 @@ class Server:
     def __init__(self):
         self.port = free_port()
         self.data = tempfile.mkdtemp(prefix="yagni-test-")
-        env = dict(os.environ, YAGNI_PORT=str(self.port), YAGNI_DATA=self.data)
+        self.mail = os.path.join(self.data, "smtp-out.txt")
+        env = dict(
+            os.environ,
+            YAGNI_PORT=str(self.port),
+            YAGNI_DATA=self.data,
+            YAGNI_SMTP_MODE="file",
+            YAGNI_SMTP_FILE=self.mail,
+        )
         self.proc = subprocess.Popen(
             [sys.executable, os.path.join(ROOT, "server.py")],
             env=env,
@@ -71,6 +78,26 @@ class Server:
             return resp.status, dict(resp.headers), resp.read().decode()
         except urllib.error.HTTPError as e:
             return e.code, dict(e.headers), e.read().decode()
+
+
+    def load_store(self):
+        path = os.path.join(self.data, "lists.json")
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+
+    def read_mail(self):
+        if not os.path.exists(self.mail):
+            return ""
+        with open(self.mail, encoding="utf-8") as f:
+            return f.read()
+
+
+def code_from_mail(mail_text, after):
+    """Last 6-digit code appearing after byte offset `after`."""
+    import re
+
+    codes = re.findall(r"\b(\d{6})\b", mail_text[after:])
+    return codes[-1] if codes else None
 
 
 class TestContract(unittest.TestCase):
@@ -154,6 +181,101 @@ class TestContract(unittest.TestCase):
                 time.sleep(0.1)
         _, _, page = self.srv.req(f"/l/{tok}")
         self.assertIn("Restart Survivor", page)
+
+    def test_08_link_email_with_code(self):
+        _, headers, _ = self.srv.req("/", data={"x": "1"})
+        tok = headers["Location"][len("/l/"):]
+        self.srv.req(f"/l/{tok}/add", data={"name": "Linked Thing"})
+        mark = len(self.srv.read_mail())
+        status, _, _ = self.srv.req(
+            f"/l/{tok}/link", data={"email": "owner@example.com"}
+        )
+        self.assertIn(status, (200, 302, 303))
+        mail = self.srv.read_mail()
+        self.assertIn("owner@example.com", mail)
+        code = code_from_mail(mail, mark)
+        self.assertIsNotNone(code)
+        status, _, page = self.srv.req(f"/l/{tok}/verify", data={"code": code})
+        self.assertIn(status, (200, 302, 303))
+        _, _, page = self.srv.req(f"/l/{tok}")
+        self.assertIn("owner@example.com", page)
+        store = self.srv.load_store()
+        self.assertEqual(store[tok].get("email"), "owner@example.com")
+
+    def test_09_wrong_code_rejected_and_locks(self):
+        _, headers, _ = self.srv.req("/", data={"x": "1"})
+        tok = headers["Location"][len("/l/"):]
+        mark = len(self.srv.read_mail())
+        self.srv.req(f"/l/{tok}/link", data={"email": "lock@example.com"})
+        code = code_from_mail(self.srv.read_mail(), mark)
+        for _ in range(5):
+            self.srv.req(f"/l/{tok}/verify", data={"code": "000000"})
+        status, _, page = self.srv.req(f"/l/{tok}/verify", data={"code": code})
+        self.assertIn(status, (200, 302, 303))
+        _, _, page = self.srv.req(f"/l/{tok}")
+        self.assertNotIn("lock@example.com", page)  # locked: even right code fails
+
+    def test_10_login_returns_linked_lists(self):
+        _, headers, _ = self.srv.req("/", data={"x": "1"})
+        tok = headers["Location"][len("/l/"):]
+        mark = len(self.srv.read_mail())
+        self.srv.req(f"/l/{tok}/link", data={"email": "login@example.com"})
+        code = code_from_mail(self.srv.read_mail(), mark)
+        self.srv.req(f"/l/{tok}/verify", data={"code": code})
+        mark = len(self.srv.read_mail())
+        status, _, _ = self.srv.req("/login", data={"email": "login@example.com"})
+        self.assertIn(status, (200, 302, 303))
+        code2 = code_from_mail(self.srv.read_mail(), mark)
+        self.assertIsNotNone(code2)
+        status, _, page = self.srv.req(
+            "/login/verify", data={"email": "login@example.com", "code": code2}
+        )
+        self.assertIn(status, (200, 302, 303))
+        _, _, page = self.srv.req("/lists")
+        self.assertIn(f"/l/{tok}", page)
+
+    def test_11_login_unknown_email_no_enumeration(self):
+        status, _, page = self.srv.req("/login", data={"email": "ghost@example.com"})
+        self.assertIn(status, (200, 302, 303))  # same shape as known emails
+        status, _, page = self.srv.req(
+            "/login/verify", data={"email": "ghost@example.com", "code": "111111"}
+        )
+        self.assertIn(status, (200, 302, 303))
+        _, _, page = self.srv.req("/lists")
+        self.assertNotIn("/l/", page)  # no list URLs leaked
+
+    def test_12_smtp_none_mode_fails_cleanly(self):
+        self.srv.stop()
+        env = dict(
+            os.environ,
+            YAGNI_PORT=str(self.srv.port),
+            YAGNI_DATA=self.srv.data,
+            YAGNI_SMTP_MODE="none",
+        )
+        self.srv.proc = subprocess.Popen(
+            [sys.executable, os.path.join(ROOT, "server.py")],
+            env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        self.addCleanup(self.srv.proc.terminate)
+        for _ in range(50):
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{self.srv.port}/", timeout=1)
+                break
+            except Exception:
+                time.sleep(0.1)
+        _, headers, _ = self.srv.req("/", data={"x": "1"})
+        tok = headers["Location"][len("/l/"):]
+        status, _, _ = self.srv.req(
+            f"/l/{tok}/link", data={"email": "x@example.com"}
+        )
+        self.assertGreaterEqual(status, 400)  # clean error, no crash, no fake success
+
+    def test_13_server_module_importable(self):
+        # test_unit.py imports server.py; main() must be guarded.
+        with open(os.path.join(ROOT, "server.py"), encoding="utf-8") as f:
+            src = f.read()
+        self.assertIn('if __name__ == "__main__"', src)
+        self.assertIn("def main(", src)
 
 
 if __name__ == "__main__":

@@ -1,37 +1,27 @@
 {
   "tasks": [
     {
-      "id": "SERVER",
-      "title": "Implement decision-list server.py to pass contract tests",
-      "scope": [
-        "server.py"
-      ],
-      "accept": "python test_app.py",
-      "acceptance_prose": "Implement server.py (single file, Python 3 stdlib ONLY \u2014 http.server, json, secrets, urllib, os; no third-party packages, no framework). Contract: test_app.py in the repo root is the specification \u2014 read it first, then make ALL its tests pass with `python test_app.py`. Behavior: GET / renders a landing page (contains 'YAGNI', a form posting to /new); POST /new creates a list with secrets.token_urlsafe(16) token and redirects to /l/<token>; GET /l/<token> renders the list page with an add-item form; POST /l/<token>/add (form fields name, price, url \u2014 only name required) adds an item with created_at and decide_at = created_at + 100*86400 (unix seconds, int) and shows days remaining; POST /l/<token>/item/<id>/decide (field status: bought|dropped) marks it; POST /l/<token>/item/<id>/delete removes it; unknown token => 404. Privacy is a hard requirement: NO cookies ever, NO request logging, bind 127.0.0.1 only, port from YAGNI_PORT env, state in a single JSON file at YAGNI_DATA/lists.json written ATOMICALLY (temp file + os.replace). Minimal server-rendered HTML with a small inline <style> block, dark background, system fonts, no external resources of any kind. Item ids are small ints per list. Commit server.py on the current branch when test_app.py passes."
+      "id": "AUTH",
+      "title": "Email login + link (magic code) in server.py, pass unit+contract layers",
+      "scope": ["server.py"],
+      "accept": "python test_unit.py && python test_app.py",
+      "acceptance_prose": "Refactor + extend server.py (stdlib only) so BOTH gate layers pass: `python test_unit.py` and `python test_app.py`. Read both test files FIRST — they are the executable specification.\n\nUnit layer requires server.py to expose these pure functions (test_unit.py imports the module, so server.py MUST be importable without starting the server — wrap startup in `def main()` + `if __name__ == \"__main__\": main()`): make_token() (urlsafe, >=20 chars), make_code() (6-digit str), valid_email(s) (must contain @ with dot in domain, no spaces; reject 'a@b', 'a@b.c.'), deadline_for(created_at) (=+100*86400), days_left(decide_at, now) (int, floored at 0), check_code(stored_code, expires_at, attempts, code, now) -> (ok: bool, reason: str) — expired fails, wrong code fails, attempts>=5 locks even for the right code, and load_store(path)/save_store(path, store) (atomic: tmp file + os.replace, no leftovers; load missing file -> {}; load old schema without email/codes keys must work).\n\nContract layer adds HTTP routes (read tests 08-13 in test_app.py): POST /l/<tok>/link {email} -> validate via valid_email, store pending code (6-digit, expires now+900, attempts 0) in the list's entry, send mail containing the code to the address, redirect; POST /l/<tok>/verify {code} -> check_code, on success set list['email']=email and clear pending code, redirect; 5 failed attempts invalidate the code.\nLogin: POST /login {email} -> identical response shape whether or not the email is linked (no enumeration — only actually send a code when the address is linked to at least one list); POST /login/verify {email, code} -> session-less: set a short-lived signed token cookie? NO COOKIES — instead redirect to /lists?e=<email>&k=<code-hash> is FORBIDDEN too; the accepted simple pattern: /login/verify renders the lists page inline (200) for a correct code, and GET /lists shows lists for ?e=<email>&t=<token> where <token> is the just-used login code stored server-side as 'login session' with 15min TTL. Tests only require: after correct /login/verify, GET /lists contains /l/<tok> for linked lists; unknown email at /login/verify -> /lists shows no /l/ URLs. Keep it as simple as these tests demand.\n\nSMTP via env, ONE function send_mail(to, subject, body) reused everywhere: YAGNI_SMTP_MODE=none -> /link and /login return a clean error page with status >= 400 (no crash, no fake success); mode=file -> append a plain RFC822-ish mail (To:, Subject:, body) to YAGNI_SMTP_FILE; mode=smtp -> smtplib.SMTP(YAGNI_SMTP_HOST, YAGNI_SMTP_PORT) sendmail from YAGNI_SMTP_FROM.\n\nBack-compat: existing data/lists.json without email/codes keys loads unchanged; save stays atomic. All existing behavior (tests 01-07) must keep passing. Commit server.py on the current branch."
     },
     {
-      "id": "SMOKE",
-      "title": "E2E smoke script driving the real server",
-      "deps": [
-        "SERVER"
-      ],
-      "scope": [
-        "smoke.py"
-      ],
+      "id": "NOTIFY",
+      "title": "notify.py — decision-due mailer, pass notify contract",
+      "deps": ["AUTH"],
+      "scope": ["notify.py", "server.py"],
+      "accept": "python test_notify.py && python test_app.py",
+      "acceptance_prose": "Write notify.py (stdlib only, reuses helpers from server.py via `import server`) so `python test_notify.py` passes AND the contract layer stays green (`python test_app.py`). Read test_notify.py first — it is the executable spec. CLI: `python notify.py --data DIR --smtp-file FILE --now TS` (also accept --smtp-host/--smtp-port/--from for production; file mode is what the tests use). Behavior: load store, for every list with an email, for every item with status 'waiting', decide_at <= now and not item.get('notified'): send ONE mail (To: list email, Subject mentions the item name and that the 100 days are up, body asks to buy or drop) and set item['notified']=true; save atomically; exit 0. Lists without an email and legacy schemas (no email key) are skipped without crashing. Reruns must not duplicate (the notified flag governs). Use server.send_mail so the SMTP abstraction stays in one place; --now overrides time.time() for deterministic tests. Commit notify.py (and any server.py import-fix needed) on the current branch."
+    },
+    {
+      "id": "SMOKE2",
+      "title": "E2E smoke: full email journey",
+      "deps": ["NOTIFY"],
+      "scope": ["smoke.py"],
       "accept": "python smoke.py",
-      "acceptance_prose": "Write smoke.py (stdlib only): start server.py as a subprocess on a free port with a temp YAGNI_DATA dir, then drive one full user journey over HTTP: create list -> add two items (one with price+url, one with only a name) -> verify both on the page with days remaining -> decide one 'bought' and one 'dropped' -> delete one -> verify page state after each step -> restart the server process and verify persistence -> assert no Set-Cookie header appeared anywhere. Print 'SMOKE PASS' on success, exit nonzero with a clear message on any failure. Commit smoke.py on the current branch when it passes."
-    },
-    {
-      "id": "PRIVACY",
-      "title": "README: privacy-first documentation for the real app",
-      "deps": [
-        "SERVER"
-      ],
-      "scope": [
-        "README.md"
-      ],
-      "accept": "findstr /i \"privacy\" README.md",
-      "acceptance_prose": "Rewrite README.md for the decision-list app (it still describes the old static joke page \u2014 replace that). Required sections: what it is (park a purchase desire for 100 days, then decide \u2014 impulse control as a service), how to run (python server.py, env YAGNI_PORT / YAGNI_DATA), a 'Privacy-first' section with that exact heading casing (no accounts \u2014 the secret URL IS the auth; no cookies; no request logs; no IPs stored; no analytics; no third-party requests; state stays in one local JSON file), the 100-day rule, MIT license note, and a deploy note (bind behind your own reverse proxy for non-localhost use; data dir must be on a trusted host). Keep it under 60 lines. Commit README.md on the current branch."
+      "acceptance_prose": "Extend smoke.py (keep all existing checks passing — it must still print SMOKE PASS at the end) with the full email journey, stdlib only: start server.py with YAGNI_SMTP_MODE=file, then (1) create list, add item; (2) link an email via /l/<tok>/link, read the 6-digit code from the smtp file, verify via /l/<tok>/verify, assert the page shows the email; (3) login from the landing page with the same email, read the new code, POST /login/verify, GET /lists and assert it contains /l/<tok>; (4) craft the store's item decide_at in the past, run notify.py as a subprocess with the same data dir + smtp file + now, assert exactly one due mail mentioning the item, run again and assert no duplicate; (5) still assert: no Set-Cookie anywhere, restart persistence for both lists and the linked email. Print SMOKE PASS on success, exit nonzero with a clear message on failure. Commit smoke.py on the current branch."
     }
   ]
 }
