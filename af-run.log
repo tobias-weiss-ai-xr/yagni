@@ -1,0 +1,16 @@
+agentflow run: 3 tasks, 1 enabled worker(s), max_parallel=1
+  → SERVER dispatch on glm (glm-4.6) [attempt 1]
+  ✓ SERVER done (attempt 1)
+  → SMOKE dispatch on glm (glm-4.6) [attempt 1]
+  ✓ SMOKE done (attempt 1)
+  → PRIVACY dispatch on glm (glm-4.6) [attempt 1]
+  ✗ PRIVACY attempt 1 failed, retrying: acceptance gate failed (exit 1): 
+  → PRIVACY dispatch on glm (glm-4.6) [attempt 2]
+  ✗ PRIVACY attempt 2 failed, retrying: acceptance gate failed (exit 1): 
+  → PRIVACY dispatch on glm (glm-4.6) [attempt 3]
+  ✗ PRIVACY failed (attempt 3/3): acceptance gate failed (exit 1): 
+DEADLOCK: no task can make progress. Blocked: PRIVACY
+TASK         STATE     ATTEMPTS LAST ERROR
+SERVER       Done 1        
+SMOKE        Done 1        
+PRIVACY      Failed 3        acceptance gate failed (exit 1): 

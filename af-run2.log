@@ -1,0 +1,4 @@
+agentflow run: 3 tasks, 1 enabled worker(s), max_parallel=1
+  → PRIVACY dispatch on glm (glm-4.6) [attempt 1]
+  ✗ PRIVACY attempt 1 failed, retrying: acceptance gate failed (exit 1): 
+  → PRIVACY dispatch on glm (glm-4.6) [attempt 2]
