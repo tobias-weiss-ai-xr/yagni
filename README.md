@@ -1,5 +1,7 @@
 # yagni — the 100-day decision list
 
+![yagni — the 100-day decision list](teaser.svg)
+
 Park a purchase desire for **100 days**, then decide: still want it → buy it.
 The urge died → drop it. Impulse control as a service, live at
 [yagni.graphwiz.ai](https://yagni.graphwiz.ai/).
