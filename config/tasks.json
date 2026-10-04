@@ -1,0 +1,27 @@
+{
+  "tasks": [
+    {
+      "id": "SERVER",
+      "title": "Implement decision-list server.py to pass contract tests",
+      "scope": ["server.py"],
+      "accept": "python test_app.py",
+      "acceptance_prose": "Implement server.py (single file, Python 3 stdlib ONLY — http.server, json, secrets, urllib, os; no third-party packages, no framework). Contract: test_app.py in the repo root is the specification — read it first, then make ALL its tests pass with `python test_app.py`. Behavior: GET / renders a landing page (contains 'YAGNI', a form posting to /new); POST /new creates a list with secrets.token_urlsafe(16) token and redirects to /l/<token>; GET /l/<token> renders the list page with an add-item form; POST /l/<token>/add (form fields name, price, url — only name required) adds an item with created_at and decide_at = created_at + 100*86400 (unix seconds, int) and shows days remaining; POST /l/<token>/item/<id>/decide (field status: bought|dropped) marks it; POST /l/<token>/item/<id>/delete removes it; unknown token => 404. Privacy is a hard requirement: NO cookies ever, NO request logging, bind 127.0.0.1 only, port from YAGNI_PORT env, state in a single JSON file at YAGNI_DATA/lists.json written ATOMICALLY (temp file + os.replace). Minimal server-rendered HTML with a small inline <style> block, dark background, system fonts, no external resources of any kind. Item ids are small ints per list. Commit server.py on the current branch when test_app.py passes."
+    },
+    {
+      "id": "SMOKE",
+      "title": "E2E smoke script driving the real server",
+      "deps": ["SERVER"],
+      "scope": ["smoke.py"],
+      "accept": "python smoke.py",
+      "acceptance_prose": "Write smoke.py (stdlib only): start server.py as a subprocess on a free port with a temp YAGNI_DATA dir, then drive one full user journey over HTTP: create list -> add two items (one with price+url, one with only a name) -> verify both on the page with days remaining -> decide one 'bought' and one 'dropped' -> delete one -> verify page state after each step -> restart the server process and verify persistence -> assert no Set-Cookie header appeared anywhere. Print 'SMOKE PASS' on success, exit nonzero with a clear message on any failure. Commit smoke.py on the current branch when it passes."
+    },
+    {
+      "id": "PRIVACY",
+      "title": "README: privacy-first documentation for the real app",
+      "deps": ["SERVER"],
+      "scope": ["README.md"],
+      "accept": "findstr /i /c:\"privacy-first\" README.md",
+      "acceptance_prose": "Rewrite README.md for the decision-list app (it still describes the old static joke page — replace that). Required sections: what it is (park a purchase desire for 100 days, then decide — impulse control as a service), how to run (python server.py, env YAGNI_PORT / YAGNI_DATA), a 'Privacy-first' section with that exact heading casing (no accounts — the secret URL IS the auth; no cookies; no request logs; no IPs stored; no analytics; no third-party requests; state stays in one local JSON file), the 100-day rule, MIT license note, and a deploy note (bind behind your own reverse proxy for non-localhost use; data dir must be on a trusted host). Keep it under 60 lines. Commit README.md on the current branch."
+    }
+  ]
+}
