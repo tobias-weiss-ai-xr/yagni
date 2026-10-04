@@ -47,10 +47,11 @@ class Server:
         else:
             raise RuntimeError("server did not start")
 
-    def stop(self):
+    def stop(self, keep_data=False):
         self.proc.terminate()
         self.proc.wait(timeout=5)
-        shutil.rmtree(self.data, ignore_errors=True)
+        if not keep_data:
+            shutil.rmtree(self.data, ignore_errors=True)
 
     def req(self, path, data=None):
         """Returns (status, headers, body). Follows redirects manually."""
@@ -138,7 +139,7 @@ class TestContract(unittest.TestCase):
         tok = headers["Location"][len("/l/"):]
         self.srv.req(f"/l/{tok}/add", data={"name": "Restart Survivor"})
         data_dir = self.srv.data
-        self.srv.stop()
+        self.srv.stop(keep_data=True)  # wipe only the process, keep the state
         env = dict(os.environ, YAGNI_PORT=str(self.srv.port), YAGNI_DATA=data_dir)
         self.srv.proc = subprocess.Popen(
             [sys.executable, os.path.join(ROOT, "server.py")],
