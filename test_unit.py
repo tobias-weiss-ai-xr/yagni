@@ -5,6 +5,7 @@ roundtrip. These names are the contract: server.py MUST expose them.
 Run: python test_unit.py
 """
 import os
+import re
 import sys
 import tempfile
 import time
@@ -94,6 +95,15 @@ class TestStoreRoundtrip(unittest.TestCase):
             f.write('{"tok": {"items": [{"name": "old"}]}}')  # pre-email schema
         store = server.load_store(path)
         self.assertEqual(store["tok"]["items"][0]["name"], "old")
+
+    def test_py38_no_backslash_in_fstring_expr(self):
+        # prod host runs py3.8: backslashes inside f-string expressions are a
+        # SyntaxError there, but parse fine on 3.12. ast feature_version does
+        # NOT catch it (PEP 701), so: regex heuristic.
+        src = open(server.__file__, encoding="utf-8").read()
+        for i, line in enumerate(src.splitlines(), 1):
+            for m in re.finditer(r'f"[^"]*\{[^}]*\\[^}]*\}', line):
+                self.fail(f"py3.8-incompatible f-string at line {i}: {line.strip()[:80]}")
 
 
 if __name__ == "__main__":
