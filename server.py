@@ -197,6 +197,7 @@ SEO_HEAD = f"""<meta name="description" content="{DESC}">
 <meta property="og:description" content="{DESC}">
 <meta property="og:url" content="{SITE}/">
 <meta name="theme-color" content="#0d1117">
+<meta name="twitter:card" content="summary">
 <script type="application/ld+json">{{"@context":"https://schema.org","@type":"WebApplication","name":"YAGNI","url":"{SITE}/","applicationCategory":"LifestyleApplication","operatingSystem":"Web","description":"{DESC}","offers":{{"@type":"Offer","price":"0","priceCurrency":"USD"}}}}</script>"""
 
 
