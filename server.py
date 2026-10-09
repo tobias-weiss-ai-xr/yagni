@@ -208,6 +208,9 @@ SEO_HEAD = f"""<meta name="description" content="{DESC}">
 
 
 LANDING = page("The 100-day impulse rule", f"""
+<svg role="img" aria-label="" width="100%" height="44" viewBox="0 0 618 44" preserveAspectRatio="none">
+  <path d="M0 22Q154 2 309 22T618 22" stroke="#58a6ff" stroke-width="2" fill="none" stroke-linecap="round" opacity=".35"/>
+</svg>
 <h1>YAGNI</h1>
 <p class="tagline">Stop impulse buys. Start saving money.</p>
 <p class="lede">Park the thing you want for 100 days. Still burning for it?
