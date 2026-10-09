@@ -109,44 +109,133 @@ def send_mail(to, subject, body):
 # --- rendering ------------------------------------------------------------
 
 STYLE = """
-body{background:#111;color:#eee;font:16px/1.5 system-ui,sans-serif;max-width:40rem;margin:2rem auto;padding:0 1rem}
-a{color:#8cf}form{display:inline}
-input,button{background:#222;color:#eee;border:1px solid #444;padding:.4rem .6rem;border-radius:4px}
-.item{border:1px solid #333;border-radius:6px;padding:.8rem;margin:.8rem 0}
-.muted{color:#999}.dropped{color:#8f8}.bought{color:#fb4}
+:root{color-scheme:dark}
+*{box-sizing:border-box;margin:0}
+body{background:#0d1117;color:#e6edf3;font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;max-width:40rem;margin:0 auto;padding:2.5rem 1.25rem 3rem}
+a{color:#58a6ff}
+h1{color:#58a6ff;font-size:clamp(2.4rem,9vw,3.6rem);letter-spacing:.04em;line-height:1;margin-top:1.5rem}
+h2{font-size:.85rem;text-transform:uppercase;letter-spacing:.14em;color:#8b949e;margin:2.4rem 0 .8rem}
+.tagline{font-size:1.15rem;margin-top:1rem}
+.lede{color:#8b949e;margin-top:.5rem}
+.steps,.checks{list-style:none;padding:0}
+.steps{counter-reset:step}
+.steps li{counter-increment:step;background:#161b22;border:1px solid #21262d;border-left:3px solid #58a6ff;border-radius:8px;padding:.75rem 1rem;margin:.6rem 0}
+.steps li::before{content:counter(step);display:inline-block;width:1.4rem;height:1.4rem;line-height:1.4rem;text-align:center;border-radius:50%;background:#58a6ff;color:#0d1117;font-weight:700;margin-right:.55rem;font-size:.85rem}
+.checks li{color:#8b949e;margin:.35rem 0}
+.checks li::before{content:"✓";color:#3fb950;font-weight:700;margin-right:.5rem}
+input,button{font:inherit;border-radius:8px}
+input{background:#0d1117;color:#e6edf3;border:1px solid #30363d;padding:.5rem .75rem}
+button{background:#21262d;color:#e6edf3;border:1px solid #30363d;padding:.5rem 1.1rem;cursor:pointer}
+form{display:inline}
+button:hover{border-color:#58a6ff;color:#58a6ff}
+.primary{background:#238636;border-color:#238636;color:#fff;font-weight:600}
+.primary:hover{background:#2ea043;color:#fff}
+input:focus,button:focus-visible,a:focus-visible{outline:2px solid #58a6ff;outline-offset:2px}
+.item{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:.9rem 1.1rem;margin:.8rem 0}
+.muted{color:#8b949e}.dropped{color:#3fb950}.bought{color:#f0883e}
+footer{margin-top:3rem;padding-top:1.2rem;border-top:1px solid #21262d;font-size:.8rem;color:#484f58}
+footer a{color:#6e7681}
 """
+
+SITE = "https://yagni.graphwiz.ai"
+DESC = ("Park a purchase desire for 100 days, then decide: still want it, buy it; "
+        "urge dead, drop it. Free impulse control with no accounts, no cookies, "
+        "no tracking, no JavaScript.")
+
+LLMS = f"""# YAGNI
+
+YAGNI ({SITE}/) is a free, privacy-first impulse-control web app implementing the
+classic 100-day purchase rule: you park a desired purchase on a private list,
+wait exactly 100 days, then decide. Still want it? Buy it, guilt-free. The urge
+died? Drop it, and you kept the money. Impulse control as a service.
+
+## How it works
+
+1. Create a list without signing up. The secret /l/<token> URL is the only
+   credential - bookmark it.
+2. Add items (name, price, link). Each item gets an immutable decide date
+   exactly 100 days after creation.
+3. When the countdown ends, mark the item bought or dropped. Decisions keep no
+   history.
+
+## Facts
+
+- Free of charge, no account required. An optional magic-code email login
+  recovers lost list URLs (6-digit code, no passwords).
+- Privacy: no cookies, no analytics, no JavaScript, no request logs, no
+  third-party requests.
+- State is one JSON file written atomically; the server is a single Python 3
+  stdlib file, MIT licensed.
+- Source code: https://github.com/tobias-weiss-ai-xr/yagni
+"""
+
+ROBOTS = "User-agent: *\nAllow: /\nDisallow: /l/\n"
 
 
 def esc(s):
     return html.escape(str(s), quote=True)
 
 
-def page(title, body):
+def page(title, body, extra_head="", indexable=False):
+    robots = "" if indexable else '<meta name="robots" content="noindex">'
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+{robots}<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#9203;</text></svg>">
 <title>{esc(title)} — YAGNI</title>
+{extra_head}
 <style>{STYLE}</style></head><body>
 {body}
+<footer><a href="/">yagni.graphwiz.ai</a> · <a href="https://github.com/tobias-weiss-ai-xr/yagni">source</a> · MIT · no cookies, no logs, no JS</footer>
 </body></html>"""
 
 
-LANDING = page("YAGNI", """
+SEO_HEAD = f"""<meta name="description" content="{DESC}">
+<link rel="canonical" href="{SITE}/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="YAGNI — the 100-day impulse rule">
+<meta property="og:description" content="{DESC}">
+<meta property="og:url" content="{SITE}/">
+<meta name="theme-color" content="#0d1117">
+<script type="application/ld+json">{{"@context":"https://schema.org","@type":"WebApplication","name":"YAGNI","url":"{SITE}/","applicationCategory":"LifestyleApplication","operatingSystem":"Web","description":"{DESC}","offers":{{"@type":"Offer","price":"0","priceCurrency":"USD"}}}}</script>"""
+
+
+LANDING = page("The 100-day impulse rule", f"""
 <h1>YAGNI</h1>
-<p>Park a purchase desire for 100 days. Still want it then? Buy it.
-The urge died? Drop it. Impulse control as a service.</p>
-<form method="post" action="/new"><button>Create a list</button></form>
-<h2>Log in</h2>
-<p>Lost your list URL? We send a 6-digit code to your email.</p>
-<form method="post" action="/login"><input name="email" placeholder="email"><button>Send code</button></form>
-""")
+<p class="tagline">Park a purchase desire for 100 days. Still want it then?
+<b>Buy it</b> — guilt-free. The urge died? <b>Drop it</b> — money kept.</p>
+<p class="lede">Impulse control as a service. No account needed: your secret
+list URL is the auth, and it's unguessable.</p>
+<h2>How it works</h2>
+<ol class="steps">
+<li><b>Add the thing.</b> Name, price, link — the 100-day deadline is set
+automatically and can't be changed.</li>
+<li><b>Wait it out.</b> Bookmark your secret list URL and let the countdown
+run.</li>
+<li><b>Decide.</b> Mark it <span class="bought">bought</span> or
+<span class="dropped">dropped</span>. No history, no judgment.</li>
+</ol>
+<form method="post" action="/new"><button class="primary">Create a list — free</button></form>
+<h2>Privacy is the product</h2>
+<ul class="checks">
+<li>No accounts, no passwords — the secret URL is the auth</li>
+<li>No cookies, no analytics, no third-party requests, no JavaScript</li>
+<li>No request logs — no IPs, no user agents, nothing persisted</li>
+<li>One JSON file on a trusted host is the entire state</li>
+</ul>
+<h2>Lost your list URL?</h2>
+<p class="muted">Link an email to your list and we'll send a 6-digit code to
+get you back in. No passwords, ever.</p>
+<form method="post" action="/login"><input name="email" type="email" placeholder="email" required><button>Send code</button></form>
+""", extra_head=SEO_HEAD, indexable=True)
 
 LOGIN_PAGE = page("Log in", """
 <h1>YAGNI</h1>
-<p>Enter the email and the 6-digit code we sent you.</p>
+<p class="tagline">Welcome back.</p>
+<p class="lede">Enter your email and the 6-digit code we sent you.</p>
 <form method="post" action="/login/verify">
-<input name="email" placeholder="email">
-<input name="code" placeholder="6-digit code">
+<input name="email" type="email" placeholder="email" required>
+<input name="code" inputmode="numeric" pattern="[0-9]{6}" placeholder="6-digit code" required>
 <button>Verify</button></form>
 """)
 
@@ -168,27 +257,31 @@ def render_list(tok, lst):
 <form method="post" action="{base}/decide"><input type="hidden" name="status" value="dropped"><button>drop</button></form>
 <form method="post" action="{base}/delete"><button>delete</button></form>
 </div>""")
-    items = "".join(rows) or '<p class="muted">Empty. Add the thing you want to want.</p>'
-    email = f'<p>email linked: {esc(lst["email"])}</p>' if lst.get("email") else ""
+    items = "".join(rows) or '<p class="muted">Nothing parked yet. Add the thing you want to want.</p>'
+    email = f'<p class="muted">email linked: {esc(lst["email"])}</p>' if lst.get("email") else ""
     return page("Your list", f"""
-<h1>YAGNI</h1>
+<h1>Your list</h1>
 {email}
+<p class="lede">Add the thing you want to want. The 100-day clock starts the
+moment you add it.</p>
 <form method="post" action="/l/{tok}/add">
 <input name="name" placeholder="What do you want?" required>
 <input name="price" placeholder="price (optional)">
 <input name="url" placeholder="url (optional)">
-<button>Add</button></form>
+<button class="primary">Add</button></form>
 {items}
 <h2>Recovery email</h2>
-<form method="post" action="/l/{tok}/link"><input name="email" placeholder="email"><button>Send code</button></form>
-<form method="post" action="/l/{tok}/verify"><input name="code" placeholder="6-digit code"><button>Verify</button></form>
+<p class="muted">Lost this URL? Link an email and sign back in with a 6-digit
+code.</p>
+<form method="post" action="/l/{tok}/link"><input name="email" type="email" placeholder="email" required><button>Send code</button></form>
+<form method="post" action="/l/{tok}/verify"><input name="code" inputmode="numeric" pattern="[0-9]{{6}}" placeholder="6-digit code"><button>Verify</button></form>
 """)
 
 
 def render_lists_page():
     email = LOGIN_STATE["email"]
     if not email:
-        return page("Your lists", '<h1>YAGNI</h1><p class="muted">No active login. Log in from the start page first.</p>')
+        return page("Your lists", '<h1>Your lists</h1><p class="muted">No active login. Log in from the start page first.</p>')
     rows = "".join(f'<p><a href="/l/{t}">/l/{t}</a></p>' for t, l in STORE.items() if l.get("email") == email)
     empty = '<p class="muted">No lists linked yet.</p>'  # py3.8: no backslash in f-string expr
     return page("Your lists", f"<h1>Lists for {esc(email)}</h1>{rows or empty}")
@@ -200,10 +293,10 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):  # privacy: no request logs, ever
         pass
 
-    def send_html(self, body, code=200):
+    def send_html(self, body, code=200, ctype="text/html; charset=utf-8"):
         b = body.encode()
         self.send_response(code)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(b)))
         self.end_headers()
         self.wfile.write(b)
@@ -225,6 +318,10 @@ class Handler(BaseHTTPRequestHandler):
         path = urllib.parse.urlparse(self.path).path
         if path == "/":
             self.send_html(LANDING)
+        elif path == "/llms.txt":
+            self.send_html(LLMS, ctype="text/plain; charset=utf-8")
+        elif path == "/robots.txt":
+            self.send_html(ROBOTS, ctype="text/plain; charset=utf-8")
         elif path == "/login":
             self.send_html(LOGIN_PAGE)
         elif path == "/lists":
