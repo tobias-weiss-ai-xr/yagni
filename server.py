@@ -187,7 +187,7 @@ def page(title, body, extra_head="", indexable=False):
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-{robots}<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#9203;</text></svg>">
+{robots}<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='28' fill='none' stroke='#58a6ff' stroke-width='3'/><path d='M32 16v16' stroke='#58a6ff' stroke-width='3' stroke-linecap='round'/><path d='M32 32l10 5' stroke='#58a6ff' stroke-width='2' stroke-linecap='round'/></svg>">
 <title>{esc(title)} — YAGNI</title>
 {extra_head}
 <style>{STYLE}</style></head><body>
