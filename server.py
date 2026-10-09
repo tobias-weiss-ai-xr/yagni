@@ -238,11 +238,11 @@ get you back in. No passwords, ever.</p>
 
 LOGIN_PAGE = page("Log in", """
 <h1>YAGNI</h1>
-<p class="tagline">Welcome back.</p>
-<p class="lede">Enter your email and the 6-digit code we sent you.</p>
+<p class="tagline">Log in to your lists.</p>
+<p class="lede">Enter your email and the 6-digit code we sent.</p>
 <form method="post" action="/login/verify">
-<input name="email" type="email" placeholder="email" required>
-<input name="code" inputmode="numeric" pattern="[0-9]{6}" placeholder="6-digit code" required>
+<input name="email" type="email" placeholder="your@email" required>
+<input name="code" inputmode="numeric" pattern="[0-9]{6}" placeholder="123456" required>
 <button>Verify</button></form>
 """)
 
