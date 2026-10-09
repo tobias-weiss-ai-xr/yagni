@@ -126,10 +126,16 @@ h2{font-size:.85rem;text-transform:uppercase;letter-spacing:.14em;color:#8b949e;
 input,button{font:inherit;border-radius:8px}
 input{background:#0d1117;color:#e6edf3;border:1px solid #30363d;padding:.5rem .75rem}
 button{background:#21262d;color:#e6edf3;border:1px solid #30363d;padding:.5rem 1.1rem;cursor:pointer}
-form{display:inline}
 button:hover{border-color:#58a6ff;color:#58a6ff}
-.primary{background:#238636;border-color:#238636;color:#fff;font-weight:600}
+.primary{background:#238636;border-color:#238636;color:#fff;font-weight:600;padding:.6rem 1.2rem}
 .primary:hover{background:#2ea043;color:#fff}
+.meta{color:#8b949e;white-space:nowrap}
+.badge{display:inline-block;padding:.15rem .45rem;background:#21262d;border:1px solid #30363d;border-radius:4px;font-size:.85rem;color:#8b949e;white-space:nowrap}
+.warn{background:#f0883e1a;color:#f0883e;border-color:#f0883e!important}
+.actions{display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap}
+.actions form{margin:0}
+.actions button{background:#21262d;border:1px solid #484f58;color:#8b949e;padding:.35rem .7rem;font-size:.85rem}
+.actions button:hover{background:#30363d;color:#e6edf3;border-color:#58a6ff}
 input:focus,button:focus-visible,a:focus-visible{outline:2px solid #58a6ff;outline-offset:2px}
 .item{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:.9rem 1.1rem;margin:.8rem 0}
 .muted{color:#8b949e}.dropped{color:#3fb950}.bought{color:#f0883e}
@@ -250,13 +256,24 @@ def render_list(tok, lst):
         else:
             days = days_left(it["decide_at"], now)
             state = f'<span class="muted">{days} days left to decide</span>'
-        price = f" — {esc(it['price'])}" if it["price"] else ""
-        link = f' <a href="{esc(it["url"])}">link</a>' if it["url"] else ""
+        if it["status"]:
+            state_html = f'<span class="badge {it["status"]}">{it["status"]} — decided</span>'
+        else:
+            days = days_left(it["decide_at"], now)
+            cls = "warn" if days <= 7 else ""
+            state_html = f'<span class="badge {cls}">{days} days left</span>'
+        price = f'<span class="meta">{esc(it["price"])}</span>' if it["price"] else ""
+        link = f'<a class="meta" href="{esc(it["url"])}">link</a>' if it["url"] else ""
+        meta = " ".join(filter(None, [price, link]))
         base = f"/l/{tok}/item/{it['id']}"
-        rows.append(f"""<div class="item"><b>{esc(it["name"])}</b>{price}{link}<br>{state}<br>
+        rows.append(f"""<div class="item">
+<b>{esc(it["name"])}</b>{meta}
+{state_html}
+<div class="actions">
 <form method="post" action="{base}/decide"><input type="hidden" name="status" value="bought"><button>buy</button></form>
 <form method="post" action="{base}/decide"><input type="hidden" name="status" value="dropped"><button>drop</button></form>
 <form method="post" action="{base}/delete"><button>delete</button></form>
+</div>
 </div>""")
     items = "".join(rows) or '<p class="muted">Nothing parked yet. Add the thing you want to want.</p>'
     email = f'<p class="muted">email linked: {esc(lst["email"])}</p>' if lst.get("email") else ""
