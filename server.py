@@ -209,10 +209,10 @@ SEO_HEAD = f"""<meta name="description" content="{DESC}">
 
 LANDING = page("The 100-day impulse rule", f"""
 <h1>YAGNI</h1>
-<p class="tagline">Park a purchase desire for 100 days. Still want it then?
-<b>Buy it</b> — guilt-free. The urge died? <b>Drop it</b> — money kept.</p>
-<p class="lede">Impulse control as a service. No account needed: your secret
-list URL is the auth, and it's unguessable.</p>
+<p class="tagline">Stop impulse buys. Start saving money.</p>
+<p class="lede">Park the thing you want for 100 days. Still burning for it?
+<b>Buy it</b>, guilt-free. The urge died? <b>Drop it</b> and keep the cash.
+No accounts, no tracking, no fuss — your secret list URL is the lock.</p>
 <h2>How it works</h2>
 <ol class="steps">
 <li><b>Add the thing.</b> Name, price, link — the 100-day deadline is set
@@ -260,8 +260,8 @@ def render_list(tok, lst):
             state_html = f'<span class="badge {it["status"]}">{it["status"]} — decided</span>'
         else:
             days = days_left(it["decide_at"], now)
-            cls = "warn" if days <= 7 else ""
-            state_html = f'<span class="badge {cls}">{days} days left</span>'
+            badge_cls = " warn" if days <= 7 else ""
+            state_html = f'<span class="badge{badge_cls}">{days} days left</span>'
         price = f'<span class="meta">{esc(it["price"])}</span>' if it["price"] else ""
         link = f'<a class="meta" href="{esc(it["url"])}">link</a>' if it["url"] else ""
         meta = " ".join(filter(None, [price, link]))
